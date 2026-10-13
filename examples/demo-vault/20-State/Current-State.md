@@ -1,6 +1,6 @@
 ---
 status: vivo
-updated: 2026-09-22
+updated: 2026-10-13
 ---
 
 # Current State
@@ -20,3 +20,9 @@ A fixture vault with one page per layer. Nothing is in flight.
 ## NEXT SESSION
 
 1. Nothing pending. This vault exists to be audited.
+
+### Needs you
+
+- *Review:* nothing.
+- *Approve:* nothing.
+- *Do:* nothing.

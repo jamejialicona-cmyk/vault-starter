@@ -42,7 +42,8 @@ Present tense only: milestone, what closed, what is in flight, what is blocked
 **and with what diagnostic suspicion**, visible debt, risks.
 
 It must end with a **"NEXT SESSION"** section: what comes next, in what order,
-and **which decisions are waiting on the human**, listed explicitly. An agent
+and **which decisions are waiting on the human**, listed explicitly in a
+"Needs you" list split into *review*, *approve* and *do* (§7). An agent
 starting cold, possibly a different model, has to continue from
 `CLAUDE.md → Current-State.md` alone without losing a decision.
 

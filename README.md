@@ -37,12 +37,12 @@ Every rule in it traces back to an incident that was measured.
 
 | Path | What it is |
 |---|---|
-| [`VAULT-STARTER.md`](VAULT-STARTER.md) | The method itself: one self-contained file, v4. Written in Spanish (see [Language](#language)). |
+| [`VAULT-STARTER.md`](VAULT-STARTER.md) | The method itself: one self-contained file, v4.1. Written in Spanish (see [Language](#language)). |
 | [`scripts/check_vault.py`](scripts/check_vault.py) | Read-only auditor for startup weight and vault health. Standard library only. |
 | [`scripts/test_check_vault.py`](scripts/test_check_vault.py) | Test suite for the auditor, with a control case for every defect it claims to detect. |
 | [`scripts/hook_current_state.sh`](scripts/hook_current_state.sh) | Claude Code hook: re-audits whenever `Current-State.md` is edited. |
 | [`skills/`](skills/) | Three agent skills: bootstrap, lint and checkpoint. |
-| [`examples/demo-vault/`](examples/demo-vault/) | The smallest correct vault. Also the CI fixture. |
+| [`examples/demo-vault/`](examples/demo-vault/) | The smallest correct vault, including a `.claude/loop.md` trigger. Also the CI fixture. |
 
 ## Quick start
 
@@ -66,14 +66,14 @@ Run against the demo vault:
 
 ```
 EJE: demo-vault  (demo-vault/)
-  [   OK] soft      122t  demo-vault/20-State/Current-State.md
-  [   OK]    -      107t  demo-vault/00-Index.md
+  [   OK] soft      141t  demo-vault/20-State/Current-State.md
+  [   OK]    -      129t  demo-vault/00-Index.md
   [   OK]    -      105t  demo-vault/20-State/Lecciones.md
-  [   OK]    -       62t  demo-vault/LOG.md
+  [   OK]    -      118t  demo-vault/LOG.md
   [   OK]    -       92t  demo-vault/SCHEMA.md
-  -> ARRANQUE: ~122t [VERDE]
+  -> ARRANQUE: ~141t [VERDE]
 
-[VERDE] ARRANQUE PEOR CASO: ~122 tokens
+[VERDE] ARRANQUE PEOR CASO: ~141 tokens
 ```
 
 What it measures and reports:
@@ -114,6 +114,26 @@ project or into `~/.claude/skills/` for every project.
 the source of the datum, never to the reported line, and the whole class of
 mentions is swept before the finding is closed.** Four QA rounds in a row
 failed on one project because they fixed the line the linter pointed at.
+
+## Loops that run on their own
+
+In the vault, a *loop* is a contract in `30-Loops/`: phases, validation, and
+since v4.1 a **termination** you can check without opinion (with a cap on
+rounds) and an **escalation** split three ways: what the human must *review*,
+*approve*, or *do*. Escalated items land in a "Needs you" list in
+`Current-State.md` and the loop moves on.
+
+Tools such as Claude Code use the same word for the *trigger*: `/loop`, local
+scheduled tasks, cloud routines. The rule (section 6.8) is that **the trigger
+points at the contract and never copies its phases.** A copy drifts the day the
+contract changes. The demo vault shows the pattern: its `.claude/loop.md` is
+five lines that send a bare `/loop` to the Lint Loop.
+
+Two consequences worth knowing before you leave one running. A cloud routine
+works on a fresh clone, so it sees only what was committed and pushed, and
+never the private files git ignores. And every round of an in-session loop
+re-sends the whole session, so startup weight stops being a saving and becomes
+a requirement (section 9.7).
 
 ## The hook
 

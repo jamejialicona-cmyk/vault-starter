@@ -1,6 +1,6 @@
 ---
 status: ratificado
-updated: 2026-09-11
+updated: 2026-10-13
 ---
 
 # Lint Loop
@@ -22,3 +22,15 @@ check [[Quirks del Entorno]] before debugging the vault itself.
 **Validation.** Auditor green, findings addressed at the SOURCE of the datum.
 
 **Exit state.** Index, LOG and Current-State updated.
+
+**Termination.** Auditor green, zero broken wikilinks, every finding either
+fixed or written to "Needs you". Or stop after 5 rounds, whichever comes first.
+
+**Escalation.** Fix the rest without asking; anything below goes to "Needs you"
+in Current-State and the loop moves on.
+- *Review:* a contradiction that needs a design decision (that is a Design Loop).
+- *Approve:* deleting or moving a page, pushing.
+- *Do:* nothing in this loop needs the human's hands.
+
+**Trigger.** Bare `/loop` in this vault reads `.claude/loop.md`, which points
+here. The trigger never copies these phases.
