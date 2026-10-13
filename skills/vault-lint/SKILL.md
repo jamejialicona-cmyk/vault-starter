@@ -38,6 +38,10 @@ healthy".
 - Index versus reality, both directions: every page in the index, every index
   entry a real page.
 - State versus repo: does `Current-State.md` reflect the actual branch?
+- Loop contracts: every file in `30-Loops/` has a measurable **Termination**
+  and an **Escalation** (§6). A trigger (`.claude/loop.md`, a scheduled task)
+  that copies phases instead of pointing at a contract is drift waiting to
+  happen: replace the copy with the path.
 
 ## Axis 2 — Startup weight
 

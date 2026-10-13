@@ -1,4 +1,4 @@
-# VAULT-STARTER — Arranca tu proyecto con un Vault dirigido por IA (v4)
+# VAULT-STARTER — Arranca tu proyecto con un Vault dirigido por IA (v4.1)
 
 > **Qué es esto:** un archivo único y autocontenido para arrancar un proyecto
 > bajo el método **VDD × LLM-WIKI**, con **dieta de arranque** — el
@@ -351,12 +351,34 @@ sorpresa.
 ## §6 — Los loops (contratos, no conversaciones)
 
 Cada archivo en `30-Loops/` define: **Objetivo · Estado de entrada · Fases ·
-Validación · Artefactos que actualiza · Estado de salida**. Si un loop
+Validación · Artefactos que actualiza · Estado de salida · Término ·
+Escalamiento** (los dos últimos, nuevos en v4.1). Si un loop
 produce errores repetidos, **se mejora el loop, no solo el resultado** — el
 sistema aprende de sí mismo. Estructura interna típica de cualquier loop
 (VDD): leer estado → leer docs relevantes → planear (impacto/riesgos/
 archivos) → implementar → validar → actualizar Vault → notificar siguiente
 estado.
+
+Los dos campos de v4.1 existen porque un loop puede correr sin humano en el
+prompt (§6.8), y entonces lo que no esté escrito no existe:
+
+- **Término — medible y con tope.** Una *tarea* termina cuando entrega; un
+  *loop* termina cuando se cumple una condición que se puede contar o
+  verificar sin opinión ("`check_vault.py` en verde y 0 wikilinks rotos"),
+  **o** al llegar a un tope de vueltas ("o para tras 10"). Sin condición
+  medible, un loop desatendido se rinde antes de tiempo o gira para
+  siempre; sin tope, el único freno es el vencimiento del scheduler.
+- **Escalamiento — qué regresa al humano, en tres cajones:**
+  - **Revisar:** lo que el agente no puede verificar solo (tono, diseño,
+    datos del negocio).
+  - **Aprobar:** lo irreversible o lo que sale afuera (push, enviar,
+    publicar, borrar, gastar).
+  - **Hacer:** lo que solo el humano puede (credenciales, llamadas,
+    conseguir un archivo).
+
+  Lo escalado se anota en la sección "Te necesito" de `Current-State.md`
+  (§7) y el loop **sigue con lo siguiente**: no se queda esperando una
+  respuesta que no va a llegar a mitad de la noche.
 
 Los 5 loops base (adapta nombres a tu dominio):
 
@@ -438,7 +460,9 @@ detecta que su propia definición apunta a algo obsoleto, no basta con
 improvisar esa corrida: **corrige el archivo fuente** (o dilo como tarea
 explícita) para que no se repita. Si tu scheduler no permite elegir modelo
 por tarea, documenta en Lecciones cuál es el modelo mínimo viable con el que
-SÍ corren todas las rutinas — no asumas que puedes bajar de ahí.
+SÍ corren todas las rutinas — no asumas que puedes bajar de ahí. (La regla
+que evita el drift desde el diseño está en §6.8: el disparador apunta al
+contrato, nunca lo copia.)
 
 Vale la pena, además, un lugar para **patrones compartidos entre varios
 loops** — no todo conocimiento operativo es un loop completo (Objetivo →
@@ -516,6 +540,67 @@ Qué suele ser mecanizable en cualquier dominio:
   aparecen donde deben aparecer.
 - **Frescura** — `updated:` contra la última modificación real del archivo.
 
+### §6.8 — Disparadores: quién echa a andar un loop (nuevo en v4.1)
+
+En el Vault, *loop* significa **contrato**: qué se hace, cómo se valida y
+cuándo termina. Las herramientas de IA usan la misma palabra para otra cosa:
+el **disparador** que repite un prompt cada cierto tiempo (en Claude Code,
+`/loop`). Son dos capas y conviene no mezclarlas:
+
+> **El archivo de `30-Loops/` define el loop. El disparador solo dice
+> cuándo corre, y apunta al contrato por su ruta: nunca copia sus fases.**
+
+Un disparador que copia las fases es un espejo fuera del Vault, exactamente
+el riesgo de §6.5: el día que el contrato cambie, el disparador seguirá
+corriendo la versión vieja.
+
+**Cuál disparador, según qué tiene que ver el loop** (nombres de Claude
+Code; la idea aplica a cualquier herramienta con scheduler):
+
+| Disparador | Corre en | Ve tus archivos locales | Dura | Úsalo para |
+|---|---|---|---|---|
+| `/loop` con intervalo | Tu sesión abierta | Sí | Mientras viva la sesión (con vencimiento) | "Cada cuánto", mientras trabajas |
+| `/loop` sin intervalo | Tu sesión abierta | Sí | Hasta que se cumple el Término | "Hasta que pase algo" (un build, una respuesta) |
+| Tarea programada local (Desktop) | Tu máquina, sin sesión abierta | Sí | Hasta que la borres | Rutinas que leen el Vault entero, incluidos los privados |
+| Rutina en la nube (`/schedule`) | Nube, sobre un clon fresco del repo | **No**: solo lo commiteado | Hasta que la borres | Lo que debe correr con la compu apagada |
+
+Tres consecuencias para el Vault:
+
+1. **La rutina en la nube solo ve lo que está en el último commit.** El
+   checkpoint de §7 (working tree limpio + push) deja de ser higiene y se
+   vuelve requisito: un Current-State sin pushear no existe para ella. Y los
+   archivos privados de §5.5, que están fuera de git, tampoco: es lo
+   correcto, así que una rutina que los necesite es local, no de nube.
+2. **`/loop` sin prompt corre una rutina de mantenimiento por defecto**, que
+   se reemplaza con un archivo `.claude/loop.md` del proyecto. En un Vault,
+   ese archivo es un **puntero de pocas líneas**: "sigue el Lint Loop de
+   `<ruta>/30-Loops/`, atiende la sección *Te necesito* de Current-State, y
+   respeta el Escalamiento de cada contrato". Si `loop.md` empieza a
+   acumular pasos, se están duplicando contratos.
+3. **Un disparador no cambia los permisos de la sesión.** Antes de
+   lanzarlo, decide qué puede hacer sin preguntar (escribir en el Vault,
+   correr el auditor) y qué no (todo lo del cajón *Aprobar*). Si cada
+   escritura pide permiso, el loop se atora en la primera vuelta; si nada lo
+   pide, el Escalamiento es decorativo.
+
+**El costo crece con la sesión, no con la tarea** (detalle en §9.7). Lanza
+los loops desde una sesión limpia, ajusta el intervalo a la velocidad real de
+lo que vigilas (revisar cada 5 minutos algo que cambia una vez al día es
+pagar 288 vueltas por una novedad), prefiere *escuchar* un proceso a
+preguntarle "¿ya?" cada minuto, y avisa al humano solo cuando algo pasó.
+
+**Verificar sigue separado de hacer** (§6.7, §8): la vuelta que produce no
+se autocalifica. La Validación del contrato corre como chequeo mecánico
+(`check_vault.py`, el linter del dominio, un hook) o como un revisor
+distinto. Y como un loop desatendido también puede inventar un enlace o un
+resultado, la Validación pide señales positivas verificables: "cada enlace
+abre y respalda la afirmación", no "se ve bien" (§8.5).
+
+Empieza con uno o dos loops y revisa su consumo cada semana antes de sumar
+más. Los números de producto (intervalo mínimo, días de vencimiento, tareas
+por sesión) cambian entre versiones: **consúltalos en la documentación de tu
+herramienta, no los copies a `SCHEMA.md`**.
+
 ---
 
 ## §7 — Current-State, Lecciones y la rutina de cierre de sesión
@@ -530,7 +615,10 @@ Describe SOLO dónde está el proyecto (milestone, qué se cerró, qué está en
 curso, qué está bloqueado y con qué sospecha, deuda visible, riesgos) y
 **termina siempre con una sección "ARRANQUE DE LA PRÓXIMA SESIÓN"**: qué
 sigue, en qué orden, y **qué decisiones esperan al humano** (lista
-explícita). Un agente que arranca en frío — posiblemente OTRO modelo — debe
+explícita). Desde v4.1 esa lista se llama **"Te necesito"** y se ordena con
+los tres cajones del Escalamiento (§6): *Revisar*, *Aprobar*, *Hacer*. Es
+donde un loop desatendido deja lo que no puede cerrar solo, y lo primero que
+lee el humano al volver. Un agente que arranca en frío — posiblemente OTRO modelo — debe
 poder continuar leyendo solo `CLAUDE.md → Current-State.md`, sin perder
 ninguna decisión.
 
@@ -1226,6 +1314,24 @@ igual de importantes.
   `.claude/settings.json`).
 - **Aviso en `SessionStart` (opt-in):** solo si lo piden explícitamente.
 
+### 9.7 — Con loops, el arranque se paga en cada vuelta (nuevo en v4.1)
+
+Una vuelta de un loop que corre dentro de una sesión reenvía el contexto
+entero de esa sesión, haya cambiado algo o no. El costo de una vuelta es
+aproximadamente *arranque + todo lo que la sesión acumuló*, y el de un loop
+es eso **multiplicado por el número de vueltas**. Por eso:
+
+- **Un arranque en 🟡 que se tolera en una sesión manual es caro en un
+  loop.** Antes de dejar un loop corriendo, el semáforo de §9.2 en verde.
+- **Lanza el loop desde una sesión limpia**, no al final de una sesión
+  larga: lo acumulado se paga en cada vuelta.
+- **La caché de prompt se vence.** Una vuelta que llega después del
+  vencimiento relee todo a precio completo; elegir el intervalo pensando en
+  la caché es un criterio legítimo, pero el primero sigue siendo la
+  velocidad real de lo vigilado.
+- **Mide.** Si tu herramienta reporta consumo por loop (en Claude Code,
+  `/usage`), revísalo cada semana y cancela lo que ya no sirve.
+
 ---
 
 ## §10 — BOOTSTRAP (instrucciones para el agente)
@@ -1244,7 +1350,9 @@ Si un humano te pidió inicializar el Vault desde este archivo:
    - **si este repo va a alojar más de un eje** (§3.6), y cuál es el default
      cuando la sesión sea ambigua;
    - **cuál es la frontera de idioma** (§5.6): qué se escribe en el idioma de
-     trabajo y qué en el idioma del público.
+     trabajo y qué en el idioma del público;
+   - **si algún loop correrá sin humano en el prompt** (§6.8), y qué puede
+     hacer sin preguntar.
 2. Crea la estructura de §3 (carpeta `Vault/` o en la raíz, a gusto del
    humano — respeta lo que ya exista). Si hay varios ejes, una carpeta por
    eje, cada una con su propio `Current-State.md`.
@@ -1256,7 +1364,10 @@ Si un humano te pidió inicializar el Vault desde este archivo:
    actual + ARRANQUE, bajo el techo de ~2,500 tokens), `Task-Board.md`
    (frentes vacíos o migrando el backlog existente), `Lecciones.md`
    (sección Entorno con build/test/rutas), los 5 loops de §6 como archivos
-   en `30-Loops/`, y `AGENTS.md` si el proyecto mezclará herramientas de IA.
+   en `30-Loops/` **con Término y Escalamiento**, y `AGENTS.md` si el
+   proyecto mezclará herramientas de IA. Si la herramienta soporta un prompt
+   de mantenimiento por defecto, siembra `.claude/loop.md` como puntero al
+   Lint Loop (§6.8), nunca como copia de sus fases.
 5. Extrae el script de §9.1 a `Vault/scripts/check_vault.py` **sin
    editarlo** — descubre los ejes solo. Si necesitas cambiar un techo, crea
    `vault-config.json` (§7.1). Córrelo una vez para la línea base.
@@ -1269,7 +1380,8 @@ Si un humano te pidió inicializar el Vault desde este archivo:
    Ingest Loop para compilarlas a Knowledge.
 9. Si el dominio tiene reglas de consistencia mecanizables (§6.7), propón un
    `check_<dominio>.py` — aunque arranque con dos o tres chequeos.
-10. Ofrece los puentes de §9.6 (no los impongas).
+10. Ofrece los puentes de §9.6 y los disparadores de §6.8 (no los impongas:
+    un disparador se activa cuando el humano lo pide, no en el bootstrap).
 11. Cierra con la rutina de §7 (incluido el primer commit) y muestra el
     reporte de `check_vault.py` como línea base de arranque.
 
@@ -1316,6 +1428,9 @@ Si un humano te pidió inicializar el Vault desde este archivo:
     el peso. Nada `ratificado` se cambia sin Design Loop.
 13. Otras IA (Codex, Cursor…) entran por `AGENTS.md`, que apunta aquí — las
     reglas viven en un solo lugar.
+14. Un disparador (`/loop`, tarea programada, rutina en la nube) apunta a un
+    contrato de `Vault/30-Loops/` y no copia sus fases. Lo que el loop no
+    puede cerrar solo va a "Te necesito" en Current-State (SCHEMA §6.8).
 ```
 
 ---
@@ -1362,6 +1477,12 @@ Si un humano te pidió inicializar el Vault desde este archivo:
   (ver §3.5) — es más rápido y no se desincroniza a media sesión.
 - **La fecha de "hoy" se corre, nunca se hereda** de un prompt, un nombre de
   archivo o la memoria del agente (ver §7, Disciplina de fecha).
+- **Empieza con uno o dos loops desatendidos, no con diez.** Cada uno
+  consume en cada vuelta y avisa cuando quiere; mide consumo y ruido una
+  semana antes de sumar otro (§6.8, §9.7).
+- **"Revísalo y déjalo bien" no es un Término.** Si no puedes escribir la
+  condición de parada como un número o una lista verificable, el loop
+  todavía no está listo para correr solo (§6).
 - **`write_uid`/"última modificación" dice quién tocó el registro AL
   ÚLTIMO, no quién ejecutó una acción concreta** — para atribuir una acción
   a una persona, busca el log de auditoría/actividad con autor y hora
@@ -1370,6 +1491,30 @@ Si un humano te pidió inicializar el Vault desde este archivo:
 ---
 
 ## §13 — Registro de cambios
+
+**v4.1 — generada 2026-10-13.** Incorpora los disparadores automáticos de
+las herramientas de IA (en Claude Code: `/loop`, tareas programadas locales
+y rutinas en la nube) sin cambiar el esqueleto. Fuentes: la documentación
+oficial de Claude Code sobre tareas programadas, y la guía comunitaria
+"Loops en Claude Code" de tododeia.com (patrón *manager loop*: archivo de
+progreso + checklist de revisión + reglas de escalamiento). El hallazgo
+central es que el Vault ya era ese patrón (Current-State = progreso;
+Validación = checklist), así que lo que faltaba era la capa de disparo y
+dos campos de contrato. Cinco cambios:
+
+1. **§6 — Término y Escalamiento** como campos obligatorios de todo
+   contrato de loop. Término medible con tope de vueltas; Escalamiento en
+   tres cajones (Revisar, Aprobar, Hacer).
+2. **§6.8 — Disparadores.** El contrato vive en `30-Loops/`; el disparador
+   apunta a él y no lo copia. Tabla para elegir disparador según lo que el
+   loop necesita ver; `.claude/loop.md` como puntero; permisos antes de
+   lanzar; verificar separado de hacer.
+3. **§7 — "Te necesito"** como forma de la lista de decisiones pendientes
+   en Current-State, ordenada por los tres cajones.
+4. **§9.7 — El arranque se paga en cada vuelta.** La dieta de arranque
+   pasa de ahorro a requisito cuando hay loops.
+5. **§10, §11, §12** — una pregunta más en el bootstrap, la semilla de
+   `.claude/loop.md`, la regla 14 de `CLAUDE.md` y dos consejos de campo.
 
 **v4 — generada 2026-09-11.** Auditoría de v3 contra un **segundo
 despliegue independiente** del método: un Vault de producción de videojuego

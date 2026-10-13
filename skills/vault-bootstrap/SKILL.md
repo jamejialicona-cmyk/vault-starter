@@ -43,6 +43,9 @@ abandoned.
 6. **Language boundary.** What is written in the working language and what in
    the audience's language (§5.6). Deciding late leaves translation debt nobody
    has sized.
+7. **Unattended loops.** Will any loop run with no human in the prompt (§6.8)?
+   If so, what may it do without asking? Everything irreversible stays on the
+   approve list.
 
 ## Step 2 — Create the structure
 
@@ -77,7 +80,12 @@ the template.
 - **`LOG.md`**: one entry, `state | Vault initialised`.
 - **`00-Index.md`**: one line per page, grouped by layer.
 - **`Lecciones.md`**: start with the Environment section (build, test, paths).
-- **`30-Loops/`**: the five base loops from §6.
+- **`30-Loops/`**: the five base loops from §6, each with a **Termination**
+  (measurable, with a cap on rounds) and an **Escalation** (review, approve,
+  do). `Current-State.md` gets a "Needs you" list in the same three boxes.
+- **`.claude/loop.md`** (only if the tool supports a default `/loop` prompt):
+  a few lines pointing at the Lint Loop. It names the contract's path and never
+  copies its phases.
 
 ## Step 4 — Install the auditor
 
@@ -119,9 +127,11 @@ startup-weight baseline.
 
 ## Anti-goals
 
-- **Do not build what §8 defers**: no scheduler, no declarative multi-agent
-  orchestration, no embeddings. Under roughly 300 pages the index replaces
-  search.
+- **Do not build what §8 defers**: no declarative multi-agent orchestration,
+  no embeddings. Under roughly 300 pages the index replaces search.
+- **Do not switch on a trigger during the bootstrap.** Seeding `loop.md` is
+  fine; scheduling a recurring task or cloud routine waits until the human asks
+  for it (§6.8).
 - **Do not auto-load knowledge pages via `@import`.** Only what every single
   session needs. Everything else lives one path away.
 - **Do not invent project state.** If you do not know where the project is, ask.
